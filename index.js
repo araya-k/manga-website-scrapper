@@ -28,7 +28,7 @@ mangaWebsites.forEach(mangaWebsite => {
                 // store the manga data to array
                 mangaSeries.push({
                     title,
-                    source: url
+                    sourceURL: url
                 })
             })
         }).catch(err => console.log(err))
@@ -44,13 +44,19 @@ app.get('/', (req, res) => {
 
 })
 
+// remove that favicon request which causing headache
+app.get('/favicon.ico', (req, res) => res.status(204));
+
 // specific manga page to show its chapter list
 app.get('/:mangaId', (req, res) => {
     const mangaId = req.params.mangaId
-    const mangaAdd = mangaSeries.filter(manga => manga.title == mangaId)[0].source
+    const mangaIdCheck = mangaSeries.filter(manga => manga.title == mangaId)
+    if (mangaIdCheck.length === 0) {return res.redirect('/')}
+    const mangaAddress = mangaSeries.filter(manga => manga.title == mangaId)[0].sourceURL
     const mangaChapters = []
 
-    cloudscraper.get(mangaAdd)
+
+    cloudscraper.get(mangaAddress)
         .then(response => {
             const html = response
             const $ = cheerio.load(html)
@@ -63,7 +69,7 @@ app.get('/:mangaId', (req, res) => {
                 // store the chapter data to array
                 mangaChapters.push({
                     title,
-                    source: url,
+                    sourceURL: url,
                     imageList: `${req.protocol}://${req.get('host')}${req.originalUrl}/${encodeURIComponent(title)}`
                 })
             })
@@ -74,10 +80,12 @@ app.get('/:mangaId', (req, res) => {
 // specific chapter page to show its content (chapter images)
 app.get('/:mangaId/:chapterId', (req, res) => {
     const mangaId = req.params.mangaId
-    const mangaAdd = mangaSeries.filter(manga => manga.title == mangaId)[0].source
+    const mangaIdCheck = mangaSeries.filter(manga => manga.title == mangaId)
+    if (mangaIdCheck.length === 0) {return res.redirect('/')}
+    const mangaAddress = mangaSeries.filter(manga => manga.title == mangaId)[0].sourceURL
     const mangaChapters = []
 
-    cloudscraper.get(mangaAdd)
+    cloudscraper.get(mangaAddress)
         .then(response => {
             const html = response
             const $ = cheerio.load(html)
@@ -90,12 +98,14 @@ app.get('/:mangaId/:chapterId', (req, res) => {
                 // store the chapter data to array
                 mangaChapters.push({
                     title,
-                    source: url,
+                    sourceURL: url,
                     imageList: `${req.protocol}://${req.get('host')}${req.originalUrl}/${encodeURIComponent(title)}`
                 })
             })
             const chapterId = req.params.chapterId
-            const chapterAddress = mangaChapters.filter(chapter => chapter.title == chapterId)[0].source
+            const chapterIdCheck = mangaChapters.filter(chapter => chapter.title == chapterId)
+            if (chapterIdCheck.length === 0) {return res.redirect('/' + encodeURIComponent(mangaId))}
+            const chapterAddress = mangaChapters.filter(chapter => chapter.title == chapterId)[0].sourceURL
             const chapterImages = []
 
             cloudscraper.get(chapterAddress)
@@ -113,6 +123,10 @@ app.get('/:mangaId/:chapterId', (req, res) => {
                     res.json(chapterImages.slice(1,-1))
                 }).catch(err => console.log(err))
         }).catch(err => console.log(err))
+})
+
+app.get('*', (req, res) => {
+    res.redirect('/')
 })
 
 app.listen(PORT, () => console.log(`server running on PORT ${PORT}`))
