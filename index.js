@@ -1,128 +1,140 @@
-const PORT = process.env.PORT || 8000
+// Import needed modules
 const cheerio = require('cheerio')
 const express = require('express')
-const cloudscraper = require('cloudscraper')
+const getMangaListPage = require('./getMangaListPage')
+const getAllChapterListPage = require('./getAllChapterListPage')
+const getChapterPage = require('./getChapterPage')
+
+// Creates app
 const app = express()
 
-// list of websites to download manga - for now it's only one XD
-const mangaWebsites = [
-    {
-        name: 'asurascans',
-        address: 'https://www.asurascans.com/manga/list-mode'
-    }
-]
+// Initializes application port
+const PORT = process.env.PORT || 8000
 
-const mangaSeries = []
+// Creates variable to store data
+const allManga = []
 
-mangaWebsites.forEach(mangaWebsite => {
-    cloudscraper.get(mangaWebsite.address)
-        .then(response => {
-            const html = response
-            const $ = cheerio.load(html)
+// Getting all manga list data
+async function getAllManga() {
+    const mangaListPageElement = await getMangaListPage.getAllElements()
 
-            // get every manga's title and url from website
-            $('a.series', 'div.soralist', html).each(function () {
-                const title = $(this).text()
-                const url = $(this).attr('href')
+    const $ = cheerio.load(mangaListPageElement)
 
-                // store the manga data to array
-                mangaSeries.push({
-                    title,
-                    sourceURL: url
-                })
-            })
-        }).catch(err => console.log(err))
-})
+    // get every manga's title and url from website
+    $('a.series', 'div.soralist', mangaListPageElement).each(function () {
+        const title = $(this).text()
+        const url = $(this).attr('href')
 
-// home page shows the list of available manga and its data
-app.get('/', (req, res) => {
-    mangaSeries.forEach(manga => {
-        manga.chapterList = `${req.protocol}://${req.get('host')}/${encodeURIComponent(manga.title)}`
+        // store the manga data to array
+        allManga.push({
+            title,
+            sourceURL: url,
+            slug: url.split('/').reverse()[1]
+        })
     })
+}
+getAllManga()
 
-    res.json(mangaSeries)
-
+// home page shows the list of available manga
+app.get('/', (req, res) => {
+    return res.json(allManga)
 })
 
 // remove that favicon request which causing headache
 app.get('/favicon.ico', (req, res) => res.status(204));
 
 // specific manga page to show its chapter list
-app.get('/:mangaId', (req, res) => {
+app.get('/:mangaId', async (req, res) => {
     const mangaId = req.params.mangaId
-    const mangaIdCheck = mangaSeries.filter(manga => manga.title == mangaId)
-    if (mangaIdCheck.length === 0) {return res.redirect('/')}
-    const mangaAddress = mangaSeries.filter(manga => manga.title == mangaId)[0].sourceURL
-    const mangaChapters = []
 
+    try {
+        // Check whether the requested mangaId exist or not
+        const mangaIdCheck = allManga.filter(manga => manga.slug == mangaId)
+        if (mangaIdCheck.length === 0) {return res.status(404).json({error: "Request Not Found"})}
+        const mangaAddress = allManga.filter(manga => manga.slug == mangaId)[0].sourceURL
+        const mangaChapters = []
 
-    cloudscraper.get(mangaAddress)
-        .then(response => {
-            const html = response
-            const $ = cheerio.load(html)
+        const mangaChapterPageElement = await getAllChapterListPage.getChapterPageElements(mangaAddress)
 
-            // get every chapter's title and url from website
-            $('a', 'div.eplister', html).each(function () {
-                const title = $('span.chapternum', this).text()
-                const url = $(this).attr('href')
+        const $ = cheerio.load(mangaChapterPageElement)
 
-                // store the chapter data to array
-                mangaChapters.push({
-                    title,
-                    sourceURL: url,
-                    imageList: `${req.protocol}://${req.get('host')}${req.originalUrl}/${encodeURIComponent(title)}`
-                })
+        // get every chapter's title and url from website
+        $('a', 'div.eplister', mangaChapterPageElement).each(function () {
+            const title = $('span.chapternum', this).text()
+            const url = $(this).attr('href')
+
+            // store the chapter data to array
+            mangaChapters.push({
+                title,
+                sourceURL: url,
+                slug: url.split('/').reverse()[1]
             })
-            res.json(mangaChapters)
-        }).catch(err => console.log(err))
+        })
+        res.json(mangaChapters)
+    }
+    catch(e) {
+        console.log(e)
+
+        return res.status(500).json({
+            error: "Something went wrong"
+        })
+    }
 })
 
 // specific chapter page to show its content (chapter images)
-app.get('/:mangaId/:chapterId', (req, res) => {
+app.get('/:mangaId/:chapterId', async (req, res) => {
     const mangaId = req.params.mangaId
-    const mangaIdCheck = mangaSeries.filter(manga => manga.title == mangaId)
-    if (mangaIdCheck.length === 0) {return res.redirect('/')}
-    const mangaAddress = mangaSeries.filter(manga => manga.title == mangaId)[0].sourceURL
-    const mangaChapters = []
+    const chapterId = req.params.chapterId
 
-    cloudscraper.get(mangaAddress)
-        .then(response => {
-            const html = response
-            const $ = cheerio.load(html)
+    try {
+        // Check whether the requested mangaId exist or not
+        const mangaIdCheck = allManga.filter(manga => manga.slug == mangaId)
+        if (mangaIdCheck.length === 0) {return res.status(404).json({error: "Request Not Found"})}
+        const mangaAddress = allManga.filter(manga => manga.slug == mangaId)[0].sourceURL
+        const mangaChapters = []
 
-            // get every chapter's title and url from website
-            $('a', 'div.eplister', html).each(function () {
-                const title = $('span.chapternum', this).text()
-                const url = $(this).attr('href')
+        const mangaChapterPageElement = await getAllChapterListPage.getChapterPageElements(mangaAddress)
 
-                // store the chapter data to array
-                mangaChapters.push({
-                    title,
-                    sourceURL: url,
-                    imageList: `${req.protocol}://${req.get('host')}${req.originalUrl}/${encodeURIComponent(title)}`
-                })
+        const $ = cheerio.load(mangaChapterPageElement)
+
+        // get every chapter's title and url from website
+        $('a', 'div.eplister', mangaChapterPageElement).each(function () {
+            const title = $('span.chapternum', this).text()
+            const url = $(this).attr('href')
+
+            // store the chapter data to array
+            mangaChapters.push({
+                title,
+                sourceURL: url,
+                slug: url.split('/').reverse()[1]
             })
-            const chapterId = req.params.chapterId
-            const chapterIdCheck = mangaChapters.filter(chapter => chapter.title == chapterId)
-            if (chapterIdCheck.length === 0) {return res.redirect('/' + encodeURIComponent(mangaId))}
-            const chapterAddress = mangaChapters.filter(chapter => chapter.title == chapterId)[0].sourceURL
-            const chapterImages = []
+        })
 
-            cloudscraper.get(chapterAddress)
-                .then(response => {
-                    const html = response
-                    const $ = cheerio.load(html)
+        const chapterIdCheck = mangaChapters.filter(chapter => chapter.slug == chapterId)
+        if (chapterIdCheck.length === 0) {return res.status(404).json({error: "Request Not Found"})}
 
-                    // get all chapter's images from website
-                    $('img', 'div#readerarea', html).each(function () {
-                        const url = $(this).attr('src')
+        const chapterAddress = mangaChapters.filter(chapter => chapter.slug == chapterId)[0].sourceURL
+        const chapterImages = []
 
-                        // store the data to array
-                        chapterImages.push(url)
-                    })
-                    res.json(chapterImages.slice(1,-1))
-                }).catch(err => console.log(err))
-        }).catch(err => console.log(err))
+        const specificChapterPageElement = await getChapterPage.getContentPageElements(chapterAddress)
+        const $$ = cheerio.load(specificChapterPageElement)
+
+        // get every chapter's title and url from website
+        $$('img', 'div#readerarea', specificChapterPageElement).each(function () {
+            const url = $$(this).attr('src')
+
+            // store the data to array
+            chapterImages.push(url)
+        })
+        res.json(chapterImages.slice(1,-1))
+    }
+    catch(e) {
+        console.log(e)
+
+        return res.status(500).json({
+            error: "Something went wrong"
+        })
+    }
 })
 
 app.get('*', (req, res) => {
