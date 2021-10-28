@@ -182,9 +182,11 @@ app.get('/series/:mangaID/chapter/:chapterID', async (req, res) => {
             $$('img', 'div#readerarea', htmlAllChapterContentPage).each(function () {
                 const url = $$(this).attr('src')
 
-                // store the data to array
+                // Store the data to array
                 allImagesUrl.push(url)
             })
+
+            // Arrange the data to array
             specificChapterData.push({
                 type: "images",
                 id: chapterID,
@@ -210,12 +212,74 @@ app.get('/series/:mangaID/chapter/:chapterID', async (req, res) => {
     }
 })
 
-/*app.get('/myfavorites', (req, res) => {
+// List of my favorite manga
+const favoriteSeriesSlug = [
+    'auto-hunting',
+    'doctors-rebirth',
+    'i-the-strongest-demon-have-regained-my-youth',
+    'im-the-only-one-loved-by-the-constellations',
+    'legend-of-asura-the-venom-dragon',
+    'limit-breaker',
+    'max-level-returner',
+    'player-who-cant-level-up',
+    'reformation-of-the-deadbeat-noble',
+    'regressor-instruction-manual',
+    'reincarnation-of-the-suicidal-battle-god',
+    'return-of-the-8th-class-magician',
+    'return-of-the-unrivaled-spear-knight',
+    'rise-from-the-rubble',
+    'seoul-stations-necromancer',
+    'solo-bug-player',
+    'solo-leveling',
+    'solo-max-level-newbie',
+    'solo-spell-caster',
+    'sss-class-gacha-hunter',
+    'sss-class-suicide-hunter',
+    'starting-today-im-a-player',
+    'the-constellation-that-returned-from-hell',
+    'the-dark-magician-transmigrates-after-66666-years',
+    'the-game-that-i-came-from',
+    'the-immortal-emperor-luo-wuji-has-returned',
+    'the-king-of-bug',
+    'the-lords-coins-arent-decreasing',
+    'the-max-level-hero-has-returned',
+    'the-second-coming-of-gluttony',
+    'the-tutorial-is-too-hard',
+    'the-tutorial-tower-of-the-advanced-player',
+    'villain-to-kill',
+    'worn-and-torn-newbie',
+    'your-talent-is-mine'
+]
 
+app.get('/myfavorites', async (req, res) => {
+    const favoriteSeriesData = []
+
+    // Fetch manga data from favorite list
+    try {
+        favoriteSeriesSlug.forEach(favorite => {
+            const jsonFavoriteData = jsonAllMangaData.filter(manga => manga.attributes.slug == favorite)[0]
+            favoriteSeriesData.push(jsonFavoriteData)
+        })
+        for (const item of favoriteSeriesData) {
+            item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
+        }
+        await res.json(favoriteSeriesData)
+    }
+    catch (error) {
+        console.error(error)
+        return res.status(500).json({
+            error: "Something went wrong"
+        })
+    }
 })
 
-app.post('/myfavorites', (req, res) => {
-
+/*app.post('/myfavorites', (req, res) => {
+    const { newMangaFavoriteSlug } = req.body
+    const mangaExist = favoriteSeriesSlug.find(manga => manga === newMangaFavoriteSlug)
+    if (mangaExist) {
+        return res.status(400).json({ error: 'Manga already exists in favorite list' })
+    }
+    res.json(req.body)
 })*/
 
 app.listen(PORT, () => console.log(`server running on PORT ${PORT}`))
