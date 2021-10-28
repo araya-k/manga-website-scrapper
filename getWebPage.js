@@ -1,8 +1,8 @@
 const cloudscraper = require('cloudscraper')
 
 module.exports = {
-    getContentPageElements: (chapterURL) => cloudscraper({
+    getAllPageElements: (requestedURL) => cloudscraper({
         method: 'GET',
-        url: chapterURL
+        url: requestedURL
     })
 }
