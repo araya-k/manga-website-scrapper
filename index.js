@@ -3,13 +3,12 @@ const cheerio = require('cheerio')
 const cloudscraper = require('cloudscraper')
 const express = require('express')
 const apicache = require('apicache')
-const bodyParser = require('body-parser')
 const getWebPage = require('./getWebPage')
+const getSeries = require('./getSeries')
 const getContent = require('./getContent')
 
 // Creates app
 const app = express()
-app.use(bodyParser.json())
 const cache = apicache.middleware
 app.use(cache('1 day'))
 
@@ -18,13 +17,12 @@ const PORT = process.env.PORT || 8000
 
 // Creates variables to store manga data
 const mangaListUrl = []
-const allMangaData = []
-const allChapterData = []
 
 // Getting all necessary information from manga web page
 async function getMangaListPage() {
     const mangaListAddress = 'https://www.asurascans.com/manga/list-mode/'
     try {
+        console.log(`Getting web page element from ${mangaListAddress}`)
         const res = await getWebPage.getAllPageElements(mangaListAddress)
         return res
     }
@@ -39,14 +37,24 @@ async function getAllMangaUrl() {
     const $ = await cheerio.load(htmlMangaListPage)
     let id = 0
     await $('a.series', 'div.soralist', htmlMangaListPage).each(function () {
-        const url = $(this).attr('href')
+        const seriesUrl = $(this).attr('href')
+        const seriesTitle = $(this).text()
+        const seriesSlug = seriesUrl.split('/').slice(-2).shift()
+
         const exclude1 = 'https://www.asurascans.com/comics/hero-has-returned/'
         const exclude2 = 'https://www.asurascans.com/comics/join-our-discord/'
-        if (url !== exclude1) {
-            if (url !== exclude2) {
+        if (seriesUrl !== exclude1) {
+            if (seriesUrl !== exclude2) {
                 mangaListUrl.push({
+                    type: "series",
                     id: id += 1,
-                    url: url
+                    attributes: {
+                        title: seriesTitle,
+                        slug: seriesSlug
+                    },
+                    links: {
+                        url: seriesUrl
+                    }
                 })
             }
         }
@@ -54,81 +62,7 @@ async function getAllMangaUrl() {
     return mangaListUrl
 }
 
-// Getting information for all manga
-async function getAllMangaDataFromUrl() {
-    const allMangaUrlData = await getAllMangaUrl()
-
-    try {
-        await allMangaUrlData.reduce(async (prev, i) => {
-            await prev
-            console.log(`Getting information for index ${i.id} from ${i.url}`)
-
-            const htmlMangaPage = await getWebPage.getAllPageElements(i.url)
-            const $ = await cheerio.load(htmlMangaPage)
-
-            const seriesGenre = []
-            const seriesTitle = await $('h1.entry-title', 'div.infox', htmlMangaPage).text()
-            const seriesSlug = i.url.split('/').slice(-2).shift()
-            const seriesThumbnailUrl = await $('img', 'div.thumb', htmlMangaPage).attr('src')
-            const seriesUrl = await $('a.item', 'div.ts-breadcrumb bixbox', htmlMangaPage).attr('href')
-            const seriesSynopsis = await $('p', 'div.entry-content', htmlMangaPage).text()
-
-            await $('a', 'span.mgen', htmlMangaPage).each(function () {
-                const genreTitle = $(this).text()
-                seriesGenre.push(genreTitle)
-            })
-
-            allMangaData.push({
-                type: "series",
-                id: i.id,
-                attributes: {
-                    title: seriesTitle,
-                    slug: seriesSlug,
-                    synopsis: seriesSynopsis,
-                    genre: seriesGenre
-                },
-                links: {
-                    sourceUrl: i.url,
-                    thumbnailUrl: seriesThumbnailUrl
-                }
-            })
-
-            await $('a', 'div.eplister', htmlMangaPage).each(function () {
-                const chapterTitle = $('span.chapternum', this).text()
-                const chapterPublishedDate = $('span.chapterdate', this).text()
-                const chapterUrl = $(this).attr('href')
-
-                const chapterId = chapterTitle.split(' ').slice(1).join('-').toLowerCase()
-                const chapterSlug = `chapter/${chapterId}`
-
-                allChapterData.push({
-                    type: "chapters",
-                    id: chapterId,
-                    attributes: {
-                        title: chapterTitle,
-                        datePublished: chapterPublishedDate,
-                        slug: chapterSlug
-                    },
-                    links: {
-                        sourceUrl: chapterUrl,
-                        seriesUrl: i.url
-                    },
-                    relationships: {
-                        seriesTitle: seriesTitle,
-                        seriesSlug: seriesSlug,
-                        seriesId: i.id
-                    }
-                })
-            })
-        }, undefined)
-    }
-    catch (error) {
-        console.error(error)
-    }
-}
-
-// Get the data now!
-getAllMangaDataFromUrl()
+getAllMangaUrl()
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -136,6 +70,7 @@ app.get('/', (req, res) => {
         hi: 'Welcome to Manga Scrapper API v2',
         availableEndpoints: {
             getAllMangaList: '/series',
+            getSpecificMangaData: '/series/{seriesSlug}',
             getSpecificMangaChapterList: '/series/{seriesSlug}/chapter',
             getSpecificChapterContentData: '/series/{seriesSlug}/chapter/{chapterSlug}'
         }
@@ -147,10 +82,10 @@ app.get('/favicon.ico', (req, res) => res.status(204))
 
 // All manga series endpoint
 app.get('/series', async (req, res) => {
-    allMangaData.forEach(item => {
+    mangaListUrl.forEach(item => {
         item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
     })
-    await res.json(allMangaData)
+    await res.json(mangaListUrl)
 })
 
 // Redirect series request with trailing slash
@@ -162,17 +97,23 @@ app.get('/series/', (req, res) => {
 app.get('/series/:seriesSlug', async (req, res) => {
     const seriesSlug = req.params.seriesSlug
 
-    try {
-        // Check whether the requested seriesSlug exist or not
-        const seriesSlugCheck = await allMangaData.filter(manga => manga.attributes.slug == seriesSlug)
-        if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
+    // Check whether the requested seriesSlug exist or not
+    const seriesSlugCheck = await mangaListUrl.filter(manga => manga.attributes.slug == seriesSlug)
+    if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
+    const specificMangaRequest = seriesSlugCheck[0]
 
+    try {
         // Getting the relevant data for requested manga
-        const specificMangaChaptersData = await allChapterData.filter(manga => manga.relationships.seriesSlug == seriesSlug)
-        specificMangaChaptersData.forEach(item => {
-            item.links.self = `${req.protocol}://${req.get('host')}/series/${item.relationships.seriesSlug}/${item.attributes.slug}`
+        const specificMangaResponse = await getSeries.getAllMangaData(specificMangaRequest)
+        const specificMangaData = specificMangaResponse[0]
+        specificMangaData.links.chapterUrl = `${req.protocol}://${req.get('host')}/series/${specificMangaData.attributes.slug}/chapter`
+        specificMangaData.links.self = `${req.protocol}://${req.get('host')}/series/${specificMangaData.attributes.slug}`
+        const specificMangaChapter = specificMangaData.chapters
+        specificMangaChapter.forEach(chapter => {
+            chapter.links.seriesUrl = `${req.protocol}://${req.get('host')}/series/${chapter.relationships.seriesSlug}`
+            chapter.links.self = `${req.protocol}://${req.get('host')}/series/${chapter.relationships.seriesSlug}/${chapter.attributes.slug}`
         })
-        await res.json(specificMangaChaptersData)
+        await res.json(specificMangaData)
     }
     catch (error) {
         console.error(error)
@@ -182,31 +123,68 @@ app.get('/series/:seriesSlug', async (req, res) => {
     }
 })
 
+// Specific manga chapter endpoint
+app.get('/series/:seriesSlug/chapter', async (req, res) => {
+    const seriesSlug = req.params.seriesSlug
+
+    // Check whether the requested seriesSlug exist or not
+    const seriesSlugCheck = await mangaListUrl.filter(manga => manga.attributes.slug == seriesSlug)
+    if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
+    const specificMangaRequest = seriesSlugCheck[0]
+
+    try {
+        // Getting the relevant data for requested manga
+        const specificMangaResponse = await getSeries.getAllMangaData(specificMangaRequest)
+        const specificMangaData = specificMangaResponse[0]
+        const specificMangaChapter = specificMangaData.chapters
+        specificMangaChapter.forEach(chapter => {
+            chapter.links.seriesUrl = `${req.protocol}://${req.get('host')}/series/${chapter.relationships.seriesSlug}`
+            chapter.links.self = `${req.protocol}://${req.get('host')}/series/${chapter.relationships.seriesSlug}/${chapter.attributes.slug}`
+        })
+        await res.json(specificMangaChapter)
+    }
+    catch (error) {
+        console.error(error)
+        return res.status(500).json({
+            error: "Something went wrong"
+        })
+    }
+})
+
+app.get('/series/:seriesSlug/chapter/', async (req, res) => {
+    const seriesSlug = req.params.seriesSlug
+    res.redirect(301, `/series/${seriesSlug}/chapter`)
+})
+
 // Specific chapter endpoint
 app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
     const seriesSlug = req.params.seriesSlug
     const chapterSlug = req.params.chapterSlug
 
-    try {
-        // Check whether the requested seriesSlug exist or not
-        const seriesSlugCheck = await allMangaData.filter(manga => manga.attributes.slug == seriesSlug)
-        if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
+    // Check whether the requested seriesSlug exist or not
+    const seriesSlugCheck = await mangaListUrl.filter(manga => manga.attributes.slug == seriesSlug)
+    if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
+    const specificMangaRequest = seriesSlugCheck[0]
 
+    try {
         // Getting the relevant data for requested manga
-        const specificMangaChaptersData = await allChapterData.filter(manga => manga.relationships.seriesSlug == seriesSlug)
+        const specificMangaResponse = await getSeries.getAllMangaData(specificMangaRequest)
+        const specificMangaData = specificMangaResponse[0]
+        const specificMangaChapter = specificMangaData.chapters
 
         // Check whether the requested chapterSlug exist or not
-        const chapterSlugCheck = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
+        const chapterSlugCheck = specificMangaChapter.filter(chapter => chapter.id == chapterSlug)
         if (chapterSlugCheck.length === 0) {return res.status(404).json({error: "Requested Chapter Not Found"})}
+        const specificChapterRequest = chapterSlugCheck[0]
+        const specificChapterUrl = specificChapterRequest.links.sourceUrl
 
         // Getting the relevant data for requested chapter
-        const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)[0]
-        const specificChapterUrl = await specificChapterData.links.sourceUrl
-
         const pureImagesUrl = await getContent.getAllImagesUrl(specificChapterUrl)
-        specificChapterData.contentUrl = pureImagesUrl
+        specificChapterRequest.contentUrl = pureImagesUrl
+        specificChapterRequest.links.seriesUrl = `${req.protocol}://${req.get('host')}/series/${specificChapterRequest.relationships.seriesSlug}`
+        specificChapterRequest.links.self = `${req.protocol}://${req.get('host')}/series/${specificChapterRequest.relationships.seriesSlug}/${specificChapterRequest.attributes.slug}`
 
-        await res.json(specificChapterData)
+        await res.json(specificChapterRequest)
     }
     catch (error) {
         console.error(error)
@@ -254,15 +232,14 @@ const favoriteSeriesSlug = [
     'worn-and-torn-newbie',
     'your-talent-is-mine'
 ]
-
 // My favorite series endpoint
-app.get('/myfavorites', async (req, res) => {
+app.get('/favorite', async (req, res) => {
     const favoriteSeriesData = []
 
-    // Fetch manga data from favorite list
     try {
-        favoriteSeriesSlug.forEach(async (favorite) => {
-            const favoriteSeries = await allMangaData.filter(manga => manga.attributes.slug == favorite)[0]
+        // Fetch manga data from favorite list
+        await favoriteSeriesSlug.forEach(async (favorite) => {
+            const favoriteSeries = await mangaListUrl.filter(manga => manga.attributes.slug == favorite)[0]
             favoriteSeriesData.push(favoriteSeries)
         })
         for (const item of favoriteSeriesData) {

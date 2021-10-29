@@ -3,17 +3,19 @@ const cheerio = require("cheerio")
 
 module.exports = {
     getAllImagesUrl: async (specificChapterUrl) => {
+        console.log(`Getting web page element from ${specificChapterUrl}`)
         const htmlAllChapterContentPage = await getWebPage.getAllPageElements(specificChapterUrl)
         const $ = await cheerio.load(htmlAllChapterContentPage)
+
         const allImagesUrl = []
 
         // Get every image's url from website
-        await $('img', 'div#readerarea', htmlAllChapterContentPage).each(async function () {
-            const url = await $(this).attr('src')
+        $('img', 'div#readerarea', htmlAllChapterContentPage).each(function () {
+            const url = $(this).attr('src')
+
             // Store the data to array
             allImagesUrl.push(url)
         })
-        const pureImagesUrl = allImagesUrl.slice(1,-1)
-        return pureImagesUrl
+        return allImagesUrl.slice(1, -1)
     }
 }
