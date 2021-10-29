@@ -206,7 +206,9 @@ app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
         const allImagesUrl = await getContent.getAllImagesUrl(specificChapterUrl)
 
         // Append the data to specific chapter array
-        specificChapterData[0].contentUrl = await allImagesUrl
+        specificChapterData[0].push(
+            contentUrl: allImagesUrl
+        )
 
         await res.json(specificChapterData[0])
     }
