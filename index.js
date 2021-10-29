@@ -38,10 +38,16 @@ async function getAllMangaUrl() {
     let id = 0
     await $('a.series', 'div.soralist', htmlMangaListPage).each(function () {
         const url = $(this).attr('href')
-        mangaListUrl.push({
-            id: id += 1,
-            url: url
-        })
+        const exclude1 = 'https://www.asurascans.com/comics/join-our-discord/'
+        const exclude2 = 'https://www.asurascans.com/comics/hero-has-returned/'
+        if (url !== exclude1) {
+            if (url !== exclude2) {
+                mangaListUrl.push({
+                    id: id += 1,
+                    url: url
+                })
+            }
+        }
     })
     return mangaListUrl
 }
