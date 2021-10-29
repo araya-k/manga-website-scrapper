@@ -16,47 +16,118 @@ app.use(cache('1 day'))
 const PORT = process.env.PORT || 8000
 
 // Creates variable to store all manga list data
-const jsonAllMangaData = []
+const mangaListUrl = []
+const allMangaData = []
+const allChapterData = []
 
 // Getting all necessary information from manga web page
-async function getAllMangaData() {
-    const allMangaListAddress = 'https://www.asurascans.com/manga/list-mode/'
+async function getMangaListPage() {
+    const mangaListAddress = 'https://www.asurascans.com/manga/list-mode/'
     try {
-        const htmlAllMangaPage = await getWebPage.getAllPageElements(allMangaListAddress)
-        const $ = cheerio.load(htmlAllMangaPage)
-        let id = 0
-
-        // Get every manga's title and url from website
-        $('a.series', 'div.soralist', htmlAllMangaPage).each(function () {
-            const title = $(this).text()
-            const url = $(this).attr('href')
-
-            // Store that data to array
-            jsonAllMangaData.push({
-                type: "series",
-                id: id += 1,
-                attributes: {
-                    title,
-                    slug: url.split('/').reverse()[1]
-                },
-                links: {
-                    source: url
-                }
-            })
-        })
+        const res = await getWebPage.getAllPageElements(mangaListAddress)
+        return res
     }
     catch (error) {
         console.error(error)
     }
 }
 
-// Get all manga list data
-getAllMangaData()
+async function getAllMangaUrl() {
+    const htmlMangaListPage = await getMangaListPage()
+    const $ = await cheerio.load(htmlMangaListPage)
+    await $('a.series', 'div.soralist', htmlMangaListPage).each(function () {
+        const url = $(this).attr('href')
+        mangaListUrl.push(url)
+    })
+    return mangaListUrl
+}
+
+async function getAllMangaDataFromUrl() {
+    const allMangaUrlData = await getAllMangaUrl()
+    let mangaID = 0
+    try {
+        await allMangaUrlData.reduce(async (prev, i) => {
+            await prev
+            console.log(`getting info from ${i}`)
+            const htmlMangaPage = await getWebPage.getAllPageElements(i)
+            const $ = await cheerio.load(htmlMangaPage)
+
+            const seriesGenre = []
+            const seriesTitle = $('h1.entry-title', 'div.infox', htmlMangaPage).text()
+            const seriesSlug = i.split('/').slice(-2).shift()
+            const seriesThumbnailUrl = $('img', 'div.thumb', htmlMangaPage).attr('src')
+            const seriesUrl = $('a.item', 'div.ts-breadcrumb bixbox', htmlMangaPage).attr('href')
+            const seriesSynopsis = $('p', 'div.entry-content', htmlMangaPage).text()
+
+            await $('a', 'span.mgen', htmlMangaPage).each(function () {
+                const genreTitle = $(this).text()
+                seriesGenre.push(genreTitle)
+            })
+
+            allMangaData.push({
+                type: "series",
+                id: mangaID =+ 1,
+                attributes: {
+                    title: seriesTitle,
+                    slug: seriesSlug
+                },
+                links: {
+                    sourceUrl: i
+                },
+                data: {
+                    thumbnailUrl: seriesThumbnailUrl,
+                    synopsis: seriesSynopsis,
+                    genre: seriesGenre
+                }
+            })
+
+            await $('a', 'div.eplister', htmlMangaPage).each(function () {
+                const chapterTitle = $('span.chapternum', this).text()
+                const chapterPublishedDate = $('span.chapterdate', this).text()
+                const chapterUrl = $(this).attr('href')
+
+                const tempSlug = chapterUrl.split('/').reverse()[1]
+                const chapterId = tempSlug.split('-').pop()
+                const chapterSlug = `chapter/${chapterId}`
+
+                allChapterData.push({
+                    type: "chapters",
+                    id: chapterId,
+                    attributes: {
+                        title: chapterTitle,
+                        datePublished: chapterPublishedDate,
+                        slug: chapterSlug
+                    },
+                    links: {
+                        sourceUrl: chapterUrl,
+                        seriesUrl: i
+                    },
+                    relationships: {
+                        series: seriesTitle,
+                        thumbnailUrl: seriesThumbnailUrl
+                    }
+                })
+            })
+        }, undefined)
+    }
+    catch (error) {
+        console.error(error)
+    }
+}
+
+getAllMangaDataFromUrl()
 
 // Root endpoint
 app.get('/', (req, res) => {
-    res.json('Welcome to Manga Scrapper API!')
+    res.json(allMangaData)
 })
+
+app.get('/series', (req, res) => {
+    res.json(allChapterData)
+})
+
+
+/*
 
 // remove that favicon request which causing headache
 app.get('/favicon.ico', (req, res) => res.status(204));
@@ -272,6 +343,7 @@ app.get('/myfavorites', async (req, res) => {
         })
     }
 })
+*/
 
 /*app.post('/myfavorites', (req, res) => {
     const { newMangaFavoriteSlug } = req.body
