@@ -5,6 +5,7 @@ const express = require('express')
 const apicache = require('apicache')
 const bodyParser = require('body-parser')
 const getWebPage = require('./getWebPage')
+const getContent = require('./getContent')
 
 // Creates app
 const app = express()
@@ -200,25 +201,14 @@ app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
 
         // Getting the relevant data for requested chapter
         const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
-        const specificChapterUrl = await specificChapterData.links.sourceUrl
+        const specificChapterUrl = await specificChapterData[0].links.sourceUrl
 
-        // Getting the image list data for the specific chapter
-        const htmlAllChapterContentPage = await getWebPage.getAllPageElements(specificChapterUrl)
-        const $ = await cheerio.load(htmlAllChapterContentPage)
-        const allImagesUrl = []
-
-        // Get every image's url from website
-        await $('img', 'div#readerarea', htmlAllChapterContentPage).each(function () {
-            const url = $(this).attr('src')
-
-            // Store the data to array
-            allImagesUrl.push(url)
-        })
+        const allImagesUrl = await getContent.getAllImagesUrl(specificChapterUrl)
 
         // Append the data to specific chapter array
-        specificChapterData.contentUrl = allImagesUrl
+        specificChapterData[0].contentUrl = await allImagesUrl
 
-        await res.json(specificChapterData)
+        await res.json(specificChapterData[0])
     }
     catch (error) {
         console.error(error)
