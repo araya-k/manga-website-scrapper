@@ -253,7 +253,7 @@ app.get('/myfavorites', async (req, res) => {
 
     // Fetch manga data from favorite list
     try {
-        favoriteSeriesSlug.forEach(favorite => {
+        favoriteSeriesSlug.forEach(async (favorite) => {
             const favoriteSeries = await allMangaData.filter(manga => manga.attributes.slug == favorite)[0]
             favoriteSeriesData.push(favoriteSeries)
         })
