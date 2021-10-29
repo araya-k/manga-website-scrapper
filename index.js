@@ -98,7 +98,7 @@ async function getAllMangaDataFromUrl() {
                 const chapterPublishedDate = $('span.chapterdate', this).text()
                 const chapterUrl = $(this).attr('href')
 
-                const chapterId = chapterTitle.split(' ').pop()
+                const chapterId = chapterTitle.split(' ').slice(1).join('-').toLowerCase()
                 const chapterSlug = `chapter/${chapterId}`
 
                 allChapterData.push({
