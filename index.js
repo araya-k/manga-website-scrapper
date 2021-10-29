@@ -38,8 +38,8 @@ async function getAllMangaUrl() {
     let id = 0
     await $('a.series', 'div.soralist', htmlMangaListPage).each(function () {
         const url = $(this).attr('href')
-        const exclude1 = 'https://www.asurascans.com/comics/join-our-discord/'
-        const exclude2 = 'https://www.asurascans.com/comics/hero-has-returned/'
+        const exclude1 = 'https://www.asurascans.com/comics/hero-has-returned/'
+        const exclude2 = 'https://www.asurascans.com/comics/join-our-discord/'
         if (url !== exclude1) {
             if (url !== exclude2) {
                 mangaListUrl.push({
@@ -65,18 +65,17 @@ async function getAllMangaDataFromUrl() {
             const $ = await cheerio.load(htmlMangaPage)
 
             const seriesGenre = []
-            const seriesTitle = $('h1.entry-title', 'div.infox', htmlMangaPage).text()
+            const seriesTitle = await $('h1.entry-title', 'div.infox', htmlMangaPage).text()
             const seriesSlug = i.url.split('/').slice(-2).shift()
-            const seriesThumbnailUrl = $('img', 'div.thumb', htmlMangaPage).attr('src')
-            const seriesUrl = $('a.item', 'div.ts-breadcrumb bixbox', htmlMangaPage).attr('href')
-            const seriesSynopsis = $('p', 'div.entry-content', htmlMangaPage).text()
+            const seriesThumbnailUrl = await $('img', 'div.thumb', htmlMangaPage).attr('src')
+            const seriesUrl = await $('a.item', 'div.ts-breadcrumb bixbox', htmlMangaPage).attr('href')
+            const seriesSynopsis = await $('p', 'div.entry-content', htmlMangaPage).text()
 
             await $('a', 'span.mgen', htmlMangaPage).each(function () {
                 const genreTitle = $(this).text()
                 seriesGenre.push(genreTitle)
             })
 
-            console.log('Pushing data to Manga array')
             allMangaData.push({
                 type: "series",
                 id: i.id,
