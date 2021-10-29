@@ -69,15 +69,13 @@ async function getAllMangaDataFromUrl() {
                 id: mangaID =+ 1,
                 attributes: {
                     title: seriesTitle,
-                    slug: seriesSlug
-                },
-                links: {
-                    sourceUrl: i
-                },
-                data: {
-                    thumbnailUrl: seriesThumbnailUrl,
+                    slug: seriesSlug,
                     synopsis: seriesSynopsis,
                     genre: seriesGenre
+                },
+                links: {
+                    sourceUrl: i,
+                    thumbnailUrl: seriesThumbnailUrl
                 }
             })
 
@@ -104,7 +102,7 @@ async function getAllMangaDataFromUrl() {
                     },
                     relationships: {
                         series: seriesTitle,
-                        thumbnailUrl: seriesThumbnailUrl
+                        id: mangaID
                     }
                 })
             })
