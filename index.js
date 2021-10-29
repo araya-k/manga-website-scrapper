@@ -35,23 +35,27 @@ async function getMangaListPage() {
 async function getAllMangaUrl() {
     const htmlMangaListPage = await getMangaListPage()
     const $ = await cheerio.load(htmlMangaListPage)
+    let id = 0
     await $('a.series', 'div.soralist', htmlMangaListPage).each(function () {
         const url = $(this).attr('href')
-        mangaListUrl.push(url)
+        mangaListUrl.push({
+            id: id += 1,
+            url: url
+        })
     })
     return mangaListUrl
 }
 
 async function getAllMangaDataFromUrl() {
     const allMangaUrlData = await getAllMangaUrl()
-    let mangaID = 0
+
     try {
         await allMangaUrlData.reduce(async (prev, i) => {
             await prev
             mangaID =+ 1
-            console.log(`Getting information for index ${mangaID} from ${i}`)
+            console.log(`Getting information for index ${i.id} from ${i.url}`)
 
-            const htmlMangaPage = await getWebPage.getAllPageElements(i)
+            const htmlMangaPage = await getWebPage.getAllPageElements(i.url)
             const $ = await cheerio.load(htmlMangaPage)
 
             const seriesGenre = []
@@ -69,7 +73,7 @@ async function getAllMangaDataFromUrl() {
             console.log('Pushing data to Manga array')
             allMangaData.push({
                 type: "series",
-                id: mangaID,
+                id: i.id,
                 attributes: {
                     title: seriesTitle,
                     slug: seriesSlug,
@@ -77,7 +81,7 @@ async function getAllMangaDataFromUrl() {
                     genre: seriesGenre
                 },
                 links: {
-                    sourceUrl: i,
+                    sourceUrl: i.url,
                     thumbnailUrl: seriesThumbnailUrl
                 }
             })
@@ -91,7 +95,6 @@ async function getAllMangaDataFromUrl() {
                 const chapterId = tempSlug.split('-').pop()
                 const chapterSlug = `chapter/${chapterId}`
 
-                console.log('Pushing data to Chapter array')
                 allChapterData.push({
                     type: "chapters",
                     id: chapterId,
@@ -102,7 +105,7 @@ async function getAllMangaDataFromUrl() {
                     },
                     links: {
                         sourceUrl: chapterUrl,
-                        seriesUrl: i
+                        seriesUrl: i.url
                     },
                     relationships: {
                         series: seriesTitle,
