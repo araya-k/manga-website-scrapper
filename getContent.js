@@ -13,6 +13,7 @@ module.exports = {
             // Store the data to array
             allImagesUrl.push(url)
         })
-        allImagesUrl.slice(1,-1)
+        const pureImagesUrl = allImagesUrl.slice(1,-1)
+        return pureImagesUrl
     }
 }

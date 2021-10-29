@@ -200,17 +200,13 @@ app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
         if (chapterSlugCheck.length === 0) {return res.status(404).json({error: "Requested Chapter Not Found"})}
 
         // Getting the relevant data for requested chapter
-        const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
-        const specificChapterUrl = await specificChapterData[0].links.sourceUrl
+        const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)[0]
+        const specificChapterUrl = await specificChapterData.links.sourceUrl
 
-        const allImagesUrl = await getContent.getAllImagesUrl(specificChapterUrl)
+        const pureImagesUrl = await getContent.getAllImagesUrl(specificChapterUrl)
+        specificChapterData.contentUrl = pureImagesUrl
 
-        // Append the data to specific chapter array
-        specificChapterData[0].push(
-            contentUrl: allImagesUrl
-        )
-
-        await res.json(specificChapterData[0])
+        await res.json(specificChapterData)
     }
     catch (error) {
         console.error(error)
