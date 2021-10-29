@@ -60,7 +60,6 @@ async function getAllMangaDataFromUrl() {
     try {
         await allMangaUrlData.reduce(async (prev, i) => {
             await prev
-            mangaID =+ 1
             console.log(`Getting information for index ${i.id} from ${i.url}`)
 
             const htmlMangaPage = await getWebPage.getAllPageElements(i.url)
@@ -98,7 +97,7 @@ async function getAllMangaDataFromUrl() {
                 const chapterPublishedDate = $('span.chapterdate', this).text()
                 const chapterUrl = $(this).attr('href')
 
-                const chapterID = chapterTitle.split(' ').pop()
+                const chapterId = chapterTitle.split(' ').pop()
                 const chapterSlug = `chapter/${chapterId}`
 
                 allChapterData.push({
@@ -116,7 +115,7 @@ async function getAllMangaDataFromUrl() {
                     relationships: {
                         seriesTitle: seriesTitle,
                         seriesSlug: seriesSlug,
-                        seriesId: mangaID
+                        seriesId: i.id
                     }
                 })
             })
@@ -169,6 +168,9 @@ app.get('/series/:seriesSlug', async (req, res) => {
 
         // Getting the relevant data for requested manga
         const specificMangaChaptersData = await allChapterData.filter(manga => manga.relationships.seriesSlug == seriesSlug)
+        specificMangaChaptersData.forEach(item => {
+            item.links.self = `${req.protocol}://${req.get('host')}/series/${item.relationships.seriesSlug}/${item.attributes.slug}`
+        })
         await res.json(specificMangaChaptersData)
     }
     catch (error) {
@@ -198,6 +200,24 @@ app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
 
         // Getting the relevant data for requested chapter
         const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
+        const specificChapterUrl = await specificChapterData.links.sourceUrl
+
+        // Getting the image list data for the specific chapter
+        const htmlAllChapterContentPage = await getWebPage.getAllPageElements(specificChapterUrl)
+        const $ = await cheerio.load(htmlAllChapterContentPage)
+        const allImagesUrl = []
+
+        // Get every image's url from website
+        await $('img', 'div#readerarea', htmlAllChapterContentPage).each(function () {
+            const url = $(this).attr('src')
+
+            // Store the data to array
+            allImagesUrl.push(url)
+        })
+
+        // Append the data to specific chapter array
+        specificChapterData.contentUrl = allImagesUrl
+
         await res.json(specificChapterData)
     }
     catch (error) {
