@@ -9,13 +9,13 @@ const getWebPage = require('./getWebPage')
 // Creates app
 const app = express()
 app.use(bodyParser.json())
-let cache = apicache.middleware
+const cache = apicache.middleware
 app.use(cache('1 day'))
 
 // Initializes application port
 const PORT = process.env.PORT || 8000
 
-// Creates variable to store all manga list data
+// Creates variables to store manga data
 const mangaListUrl = []
 const allMangaData = []
 const allChapterData = []
@@ -32,6 +32,7 @@ async function getMangaListPage() {
     }
 }
 
+// Getting list of manga URL
 async function getAllMangaUrl() {
     const htmlMangaListPage = await getMangaListPage()
     const $ = await cheerio.load(htmlMangaListPage)
@@ -52,6 +53,7 @@ async function getAllMangaUrl() {
     return mangaListUrl
 }
 
+// Getting information for all manga
 async function getAllMangaDataFromUrl() {
     const allMangaUrlData = await getAllMangaUrl()
 
@@ -96,8 +98,7 @@ async function getAllMangaDataFromUrl() {
                 const chapterPublishedDate = $('span.chapterdate', this).text()
                 const chapterUrl = $(this).attr('href')
 
-                const tempSlug = chapterUrl.split('/').reverse()[1]
-                const chapterId = tempSlug.split('-').pop()
+                const chapterID = chapterTitle.split(' ').pop()
                 const chapterSlug = `chapter/${chapterId}`
 
                 allChapterData.push({
@@ -113,8 +114,9 @@ async function getAllMangaDataFromUrl() {
                         seriesUrl: i.url
                     },
                     relationships: {
-                        series: seriesTitle,
-                        id: mangaID
+                        seriesTitle: seriesTitle,
+                        seriesSlug: seriesSlug,
+                        seriesId: mangaID
                     }
                 })
             })
@@ -125,73 +127,49 @@ async function getAllMangaDataFromUrl() {
     }
 }
 
+// Get the data now!
 getAllMangaDataFromUrl()
 
 // Root endpoint
 app.get('/', (req, res) => {
-    res.json(allMangaData)
+    return res.json({
+        hi: 'Welcome to Manga Scrapper API v2',
+        availableEndpoints: {
+            getAllMangaList: '/series',
+            getSpecificMangaChapterList: '/series/{seriesSlug}/chapter',
+            getSpecificChapterContentData: '/series/{seriesSlug}/chapter/{chapterSlug}'
+        }
+    })
 })
 
-app.get('/series', (req, res) => {
-    res.json(allChapterData)
-})
-
-
-/*
-
-// remove that favicon request which causing headache
-app.get('/favicon.ico', (req, res) => res.status(204));
+// No content for favicon request
+app.get('/favicon.ico', (req, res) => res.status(204))
 
 // All manga series endpoint
 app.get('/series', async (req, res) => {
-    jsonAllMangaData.forEach(item => {
+    allMangaData.forEach(item => {
         item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
     })
-    await res.json(jsonAllMangaData)
+    await return res.json(allMangaData)
+})
+
+// Redirect series request with trailing slash
+app.get('/series/', (req, res) => {
+    res.redirect(301, '/series')
 })
 
 // Specific manga endpoint
-app.get('/series/:mangaID', async (req, res) => {
-    const mangaID = req.params.mangaID
+app.get('/series/:seriesSlug', async (req, res) => {
+    const seriesSlug = req.params.seriesSlug
 
-    // Check whether the requested mangaID exist or not
-    const mangaIDCheck = jsonAllMangaData.filter(manga => manga.attributes.slug == mangaID)
-    if (mangaIDCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
-
-    // Getting the specific manga address
-    const specificMangaAddress = jsonAllMangaData.filter(manga => manga.attributes.slug == mangaID)[0].links.source
-
-    // Creates variable to store specific manga chapters data
-    const specificMangaChaptersData = []
-
-    // Trying to get the chapter list data for a specific manga
     try {
-        const htmlAllChaptersPage = await getWebPage.getAllPageElements(specificMangaAddress)
-        const $ = cheerio.load(htmlAllChaptersPage)
+        // Check whether the requested seriesSlug exist or not
+        const seriesSlugCheck = await allMangaData.filter(manga => manga.attributes.slug == seriesSlug)
+        if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
 
-        // Get every chapter's title and url from website
-        $('a', 'div.eplister', htmlAllChaptersPage).each(function () {
-            const title = $('span.chapternum', this).text()
-            const url = $(this).attr('href')
-            const tempSlug = url.split('/').reverse()[1]
-            const id = tempSlug.split('-').pop()
-            const slug = `chapter/${id}`
-
-            // Store that data to array
-            specificMangaChaptersData.push({
-                type: "chapters",
-                id,
-                attributes: {
-                    title,
-                    slug
-                },
-                links: {
-                    source: url,
-                    self: `${req.protocol}://${req.get('host')}/series/${mangaID}/${slug}`
-                }
-            })
-        })
-        await res.json(specificMangaChaptersData)
+        // Getting the relevant data for requested manga
+        const specificMangaChaptersData = await allChapterData.filter(manga => manga.relationships.seriesSlug == seriesSlug)
+        await return res.json(specificMangaChaptersData)
     }
     catch (error) {
         console.error(error)
@@ -201,89 +179,26 @@ app.get('/series/:mangaID', async (req, res) => {
     }
 })
 
-app.get('/series/:mangaID/chapter/:chapterID', async (req, res) => {
-    const mangaID = req.params.mangaID
-    const chapterID = req.params.chapterID
+// Specific chapter endpoint
+app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
+    const seriesSlug = req.params.seriesSlug
+    const chapterSlug = req.params.chapterSlug
 
-    // Check whether the requested mangaID exist or not
-    const mangaIDCheck = jsonAllMangaData.filter(manga => manga.attributes.slug == mangaID)
-    if (mangaIDCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
-
-    // Getting the specific manga address
-    const specificMangaAddress = jsonAllMangaData.filter(manga => manga.attributes.slug == mangaID)[0].links.source
-
-    // Creates variable to store specific manga chapters data
-    const specificMangaChaptersData = []
-
-    // Trying to get the chapter list data for a specific manga
     try {
-        const htmlAllChaptersPage = await getWebPage.getAllPageElements(specificMangaAddress)
-        const $ = cheerio.load(htmlAllChaptersPage)
+        // Check whether the requested seriesSlug exist or not
+        const seriesSlugCheck = await allMangaData.filter(manga => manga.attributes.slug == seriesSlug)
+        if (seriesSlugCheck.length === 0) {return res.status(404).json({error: "Requested Manga Not Found"})}
 
-        // Get every chapter's title and url from website
-        $('a', 'div.eplister', htmlAllChaptersPage).each(function () {
-            const title = $('span.chapternum', this).text()
-            const url = $(this).attr('href')
-            const tempSlug = url.split('/').reverse()[1]
-            const id = tempSlug.split('-').pop()
-            const slug = `chapter/${id}`
+        // Getting the relevant data for requested manga
+        const specificMangaChaptersData = await allChapterData.filter(manga => manga.relationships.seriesSlug == seriesSlug)
 
-            // Store that data to array
-            specificMangaChaptersData.push({
-                type: "chapters",
-                id,
-                attributes: {
-                    title,
-                    slug
-                },
-                links: {
-                    source: url,
-                    self: `${req.protocol}://${req.get('host')}/series/${mangaID}/${slug}`
-                }
-            })
-        })
+        // Check whether the requested chapterSlug exist or not
+        const chapterSlugCheck = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
+        if (chapterSlugCheck.length === 0) {return res.status(404).json({error: "Requested Chapter Not Found"})}
 
-        // Check whether the requested chapterID exist or not
-        const chapterIDCheck = specificMangaChaptersData.filter(chapter => chapter.id == chapterID)
-        if (chapterIDCheck.length === 0) {return res.status(404).json({error: "Requested Chapter Not Found"})}
-
-        // Getting the specific chapter address
-        const specificChapterAddress = specificMangaChaptersData.filter(chapter => chapter.id == chapterID)[0].links.source
-
-        // Creates variable to store specific manga chapters data
-        const specificChapterData = []
-
-        // Trying to get the image list data for a specific chapter
-        try {
-            const htmlAllChapterContentPage = await getWebPage.getAllPageElements(specificChapterAddress)
-            const $$ = cheerio.load(htmlAllChapterContentPage)
-            const allImagesUrl = []
-
-            // Get every image's url from website
-            $$('img', 'div#readerarea', htmlAllChapterContentPage).each(function () {
-                const url = $$(this).attr('src')
-
-                // Store the data to array
-                allImagesUrl.push(url)
-            })
-
-            // Arrange the data to array
-            specificChapterData.push({
-                type: "images",
-                id: chapterID,
-                content: allImagesUrl.slice(1,-1),
-                relationship: {
-                    series: `${req.protocol}://${req.get('host')}/series/${mangaID}`
-                }
-            })
-            await res.json(specificChapterData)
-        }
-        catch (error) {
-            console.error(error)
-            return res.status(500).json({
-                error: "Something went wrong"
-            })
-        }
+        // Getting the relevant data for requested chapter
+        const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
+        await return res.json(specificChapterData)
     }
     catch (error) {
         console.error(error)
@@ -332,19 +247,20 @@ const favoriteSeriesSlug = [
     'your-talent-is-mine'
 ]
 
+// My favorite series endpoint
 app.get('/myfavorites', async (req, res) => {
     const favoriteSeriesData = []
 
     // Fetch manga data from favorite list
     try {
         favoriteSeriesSlug.forEach(favorite => {
-            const jsonFavoriteData = jsonAllMangaData.filter(manga => manga.attributes.slug == favorite)[0]
-            favoriteSeriesData.push(jsonFavoriteData)
+            const favoriteSeries = await allMangaData.filter(manga => manga.attributes.slug == favorite)[0]
+            favoriteSeriesData.push(favoriteSeries)
         })
         for (const item of favoriteSeriesData) {
             item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
         }
-        await res.json(favoriteSeriesData)
+        await return res.json(favoriteSeriesData)
     }
     catch (error) {
         console.error(error)
@@ -353,7 +269,6 @@ app.get('/myfavorites', async (req, res) => {
         })
     }
 })
-*/
 
 /*app.post('/myfavorites', (req, res) => {
     const { newMangaFavoriteSlug } = req.body
