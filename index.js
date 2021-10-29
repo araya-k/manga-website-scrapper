@@ -60,7 +60,7 @@ async function getAllMangaDataFromUrl() {
 
             const seriesGenre = []
             const seriesTitle = $('h1.entry-title', 'div.infox', htmlMangaPage).text()
-            const seriesSlug = i.split('/').slice(-2).shift()
+            const seriesSlug = i.url.split('/').slice(-2).shift()
             const seriesThumbnailUrl = $('img', 'div.thumb', htmlMangaPage).attr('src')
             const seriesUrl = $('a.item', 'div.ts-breadcrumb bixbox', htmlMangaPage).attr('href')
             const seriesSynopsis = $('p', 'div.entry-content', htmlMangaPage).text()
