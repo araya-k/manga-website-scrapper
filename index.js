@@ -48,7 +48,9 @@ async function getAllMangaDataFromUrl() {
     try {
         await allMangaUrlData.reduce(async (prev, i) => {
             await prev
-            console.log(`getting info from ${i}`)
+            mangaID =+ 1
+            console.log(`Getting information for index ${mangaID} from ${i}`)
+
             const htmlMangaPage = await getWebPage.getAllPageElements(i)
             const $ = await cheerio.load(htmlMangaPage)
 
@@ -64,9 +66,10 @@ async function getAllMangaDataFromUrl() {
                 seriesGenre.push(genreTitle)
             })
 
+            console.log('Pushing data to Manga array')
             allMangaData.push({
                 type: "series",
-                id: mangaID =+ 1,
+                id: mangaID,
                 attributes: {
                     title: seriesTitle,
                     slug: seriesSlug,
@@ -88,6 +91,7 @@ async function getAllMangaDataFromUrl() {
                 const chapterId = tempSlug.split('-').pop()
                 const chapterSlug = `chapter/${chapterId}`
 
+                console.log('Pushing data to Chapter array')
                 allChapterData.push({
                     type: "chapters",
                     id: chapterId,
