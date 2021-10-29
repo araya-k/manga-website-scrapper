@@ -132,7 +132,7 @@ getAllMangaDataFromUrl()
 
 // Root endpoint
 app.get('/', (req, res) => {
-    return res.json({
+    res.json({
         hi: 'Welcome to Manga Scrapper API v2',
         availableEndpoints: {
             getAllMangaList: '/series',
@@ -150,7 +150,7 @@ app.get('/series', async (req, res) => {
     allMangaData.forEach(item => {
         item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
     })
-    await return res.json(allMangaData)
+    await res.json(allMangaData)
 })
 
 // Redirect series request with trailing slash
@@ -169,7 +169,7 @@ app.get('/series/:seriesSlug', async (req, res) => {
 
         // Getting the relevant data for requested manga
         const specificMangaChaptersData = await allChapterData.filter(manga => manga.relationships.seriesSlug == seriesSlug)
-        await return res.json(specificMangaChaptersData)
+        await res.json(specificMangaChaptersData)
     }
     catch (error) {
         console.error(error)
@@ -198,7 +198,7 @@ app.get('/series/:seriesSlug/chapter/:chapterSlug', async (req, res) => {
 
         // Getting the relevant data for requested chapter
         const specificChapterData = await specificMangaChaptersData.filter(chapter => chapter.id == chapterSlug)
-        await return res.json(specificChapterData)
+        await res.json(specificChapterData)
     }
     catch (error) {
         console.error(error)
@@ -260,7 +260,7 @@ app.get('/myfavorites', async (req, res) => {
         for (const item of favoriteSeriesData) {
             item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
         }
-        await return res.json(favoriteSeriesData)
+        await res.json(favoriteSeriesData)
     }
     catch (error) {
         console.error(error)
@@ -269,14 +269,5 @@ app.get('/myfavorites', async (req, res) => {
         })
     }
 })
-
-/*app.post('/myfavorites', (req, res) => {
-    const { newMangaFavoriteSlug } = req.body
-    const mangaExist = favoriteSeriesSlug.find(manga => manga === newMangaFavoriteSlug)
-    if (mangaExist) {
-        return res.status(400).json({ error: 'Manga already exists in favorite list' })
-    }
-    res.json(req.body)
-})*/
 
 app.listen(PORT, () => console.log(`server running on PORT ${PORT}`))
