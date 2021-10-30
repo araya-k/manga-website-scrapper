@@ -2,15 +2,12 @@
 const cheerio = require('cheerio')
 const cloudscraper = require('cloudscraper')
 const express = require('express')
-const apicache = require('apicache')
 const getWebPage = require('./getWebPage')
 const getSeries = require('./getSeries')
 const getContent = require('./getContent')
 
 // Creates app
 const app = express()
-const cache = apicache.middleware
-app.use(cache('1 day'))
 
 // Initializes application port
 const PORT = process.env.PORT || 8000
