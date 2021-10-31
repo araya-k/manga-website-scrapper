@@ -1,10 +1,7 @@
 // Import needed modules
-const cheerio = require('cheerio')
-const cloudscraper = require('cloudscraper')
 const express = require('express')
-const getWebPage = require('./getWebPage')
-const getSeries = require('./getSeries')
-const getContent = require('./getContent')
+const mongoose = require('mongoose')
+const scraper = require('./routes/scraper')
 
 // Creates app
 const app = express()
@@ -12,71 +9,35 @@ const app = express()
 // Initializes application port
 const PORT = process.env.PORT || 8000
 
-// Creates variables to store manga data
-const mangaListUrl = []
+// Connect to mongodb
+const username = 'root'
+const password = encodeURIComponent('r?RMxLdbkq1D?Ue*gP$dl&Lq?crLj!7w')
+const host = 'zdeee9589-mongodb.heapstack.sh'
+const dbport = '27017'
 
-// Getting all necessary information from manga web page
-async function getMangaListPage() {
-    const mangaListAddress = 'https://www.asurascans.com/manga/list-mode/'
-    try {
-        console.log(`Getting web page element from ${mangaListAddress}`)
-        const res = await getWebPage.getAllPageElements(mangaListAddress)
-        return res
+mongoose.connect(
+    `mongodb://${username}:${password}@${host}:${dbport}`,
+    {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
     }
-    catch (error) {
-        console.error(error)
-    }
-}
+)
 
-// Getting list of manga URL
-async function getAllMangaUrl() {
-    const htmlMangaListPage = await getMangaListPage()
-    const $ = await cheerio.load(htmlMangaListPage)
-    let id = 0
-    await $('a.series', 'div.soralist', htmlMangaListPage).each(function () {
-        const seriesUrl = $(this).attr('href')
-        const seriesTitle = $(this).text()
-        const seriesSlug = seriesUrl.split('/').slice(-2).shift()
-
-        const exclude1 = 'https://www.asurascans.com/comics/hero-has-returned/'
-        const exclude2 = 'https://www.asurascans.com/comics/join-our-discord/'
-        if (seriesUrl !== exclude1) {
-            if (seriesUrl !== exclude2) {
-                mangaListUrl.push({
-                    type: "series",
-                    id: id += 1,
-                    attributes: {
-                        title: seriesTitle,
-                        slug: seriesSlug
-                    },
-                    links: {
-                        url: seriesUrl
-                    }
-                })
-            }
-        }
-    })
-    return mangaListUrl
-}
-
-getAllMangaUrl()
-
-// Root endpoint
-app.get('/', (req, res) => {
-    res.json({
-        hi: 'Welcome to Manga Scrapper API v2',
-        availableEndpoints: {
-            getAllMangaList: '/series',
-            getSpecificMangaData: '/series/{seriesSlug}',
-            getSpecificMangaChapterList: '/series/{seriesSlug}/chapter',
-            getSpecificChapterContentData: '/series/{seriesSlug}/chapter/{chapterSlug}'
-        }
-    })
+const db = mongoose.connection;
+db.on("error", console.error.bind(console, "Database connection error: "))
+db.once("open", function () {
+    console.log("Database connected successfully");
 })
 
-// No content for favicon request
-app.get('/favicon.ico', (req, res) => res.status(204))
+app.use('/', scraper)
 
+app.get('/delete-db', (req, res) => {
+    db.dropDatabase()
+    console.log('Database deleted successfully')
+    res.redirect('/')
+})
+
+/*
 // All manga series endpoint
 app.get('/series', async (req, res) => {
     mangaListUrl.forEach(item => {
@@ -251,5 +212,6 @@ app.get('/favorite', async (req, res) => {
         })
     }
 })
+*/
 
 app.listen(PORT, () => console.log(`server running on PORT ${PORT}`))
