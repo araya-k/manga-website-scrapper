@@ -5,6 +5,13 @@ const scraper = require('./routes/scraper')
 
 // Creates app
 const app = express()
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+)
+app.use(express.json())
+app.use('/', scraper)
 
 // Initializes application port
 const PORT = process.env.PORT || 8000
@@ -29,9 +36,7 @@ db.once("open", function () {
     console.log("Database connected successfully");
 })
 
-app.use('/', scraper)
-
-app.get('/delete-db', (req, res) => {
+app.get('/db', (req, res) => {
     db.dropDatabase()
     console.log('Database deleted successfully')
     res.redirect('/')

@@ -22,8 +22,7 @@ const SeriesSchema = new Schema({
             required: true
         },
         synopsis: {
-            type: String,
-            required: true
+            type: String
         },
         slug: {
             type: String,
@@ -42,18 +41,24 @@ const SeriesSchema = new Schema({
         thumbnailUrl: {
             type: String
         },
+        compressedThumbnailUrl: {
+            type: String
+        },
+        chapterUrl: {
+            type: String,
+            required: true
+        },
         self: {
             type: String,
             required: true
         }
     },
-    chapters: [{
-        type: Schema.Types.ObjectId,
+    chapters: {
+        type: Schema.Types.Array,
         ref: 'Chapters'
-    }]
-
+    }
 })
 
-const Series = mongoose.model('Series',SeriesSchema)
+const Series = mongoose.model('Series', SeriesSchema)
 
 module.exports = Series

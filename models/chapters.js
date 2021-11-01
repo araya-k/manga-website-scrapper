@@ -9,6 +9,9 @@ const ChaptersSchema = new Schema({
         required: true,
         lowercase: true
     },
+    id: {
+        type: String
+    },
     updated: {
         type: String,
         default: moment().format('MMMM Do YYYY, h:mm A')
@@ -54,9 +57,12 @@ const ChaptersSchema = new Schema({
             type: String,
             required: true
         }
+    },
+    content: {
+        type: Array
     }
 })
 
-const Chapters = mongoose.model('Chapters',ChaptersSchema)
+const Chapters = mongoose.model('Chapters', ChaptersSchema)
 
 module.exports = Chapters
