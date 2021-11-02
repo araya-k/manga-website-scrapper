@@ -31,72 +31,15 @@ mongoose.connection.once('open', () => {
 })
 
 app.get('/', (req, res) => {
-    res.json('Welcome to Manga Scrapper API v2')
+    res.json('Welcome to Manga Scrapper API v3')
 })
 
 app.get('/favicon.ico', (req, res) => res.status(204))
 
-/*
-// List of my favorite manga
-const favoriteSeriesSlug = [
-    'auto-hunting',
-    'doctors-rebirth',
-    'i-the-strongest-demon-have-regained-my-youth',
-    'im-the-only-one-loved-by-the-constellations',
-    'legend-of-asura-the-venom-dragon',
-    'limit-breaker',
-    'max-level-returner',
-    'player-who-cant-level-up',
-    'reformation-of-the-deadbeat-noble',
-    'regressor-instruction-manual',
-    'reincarnation-of-the-suicidal-battle-god',
-    'return-of-the-8th-class-magician',
-    'return-of-the-unrivaled-spear-knight',
-    'rise-from-the-rubble',
-    'seoul-stations-necromancer',
-    'solo-bug-player',
-    'solo-leveling',
-    'solo-max-level-newbie',
-    'solo-spell-caster',
-    'sss-class-gacha-hunter',
-    'sss-class-suicide-hunter',
-    'starting-today-im-a-player',
-    'the-constellation-that-returned-from-hell',
-    'the-dark-magician-transmigrates-after-66666-years',
-    'the-game-that-i-came-from',
-    'the-immortal-emperor-luo-wuji-has-returned',
-    'the-king-of-bug',
-    'the-lords-coins-arent-decreasing',
-    'the-max-level-hero-has-returned',
-    'the-second-coming-of-gluttony',
-    'the-tutorial-is-too-hard',
-    'the-tutorial-tower-of-the-advanced-player',
-    'villain-to-kill',
-    'worn-and-torn-newbie',
-    'your-talent-is-mine'
-]
-// My favorite series endpoint
-app.get('/favorite', async (req, res) => {
-    const favoriteSeriesData = []
-
-    try {
-        // Fetch manga data from favorite list
-        await favoriteSeriesSlug.forEach(async (favorite) => {
-            const favoriteSeries = await mangaListUrl.filter(manga => manga.attributes.slug == favorite)[0]
-            favoriteSeriesData.push(favoriteSeries)
-        })
-        for (const item of favoriteSeriesData) {
-            item.links.self = `${req.protocol}://${req.get('host')}/series/${item.attributes.slug}`
-        }
-        await res.json(favoriteSeriesData)
-    }
-    catch (error) {
-        console.error(error)
-        return res.status(500).json({
-            error: "Something went wrong"
-        })
-    }
+app.delete('/db', (req, res) => {
+    mongoose.connection.dropDatabase()
+    console.log('Database deleted successfully')
+    res.redirect('/')
 })
-*/
 
 app.listen(PORT, () => console.log(`server running on PORT ${PORT}`))

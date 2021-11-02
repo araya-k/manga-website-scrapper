@@ -32,6 +32,11 @@ router.post('/list', async (req, res) => {
                 console.log(`'${item.listSlug}' was missing parts, it will not be saved to the database`)
                 continue
             }
+            const isAlreadyExist = await List.count({ 'url': item.listSourceUrl })
+            if (isAlreadyExist) {
+                console.log(`'${item.listTitle}' is already exist in the database`)
+                continue
+            }
             const listData = {
                 id: id += 1,
                 title: item.listTitle,
@@ -62,6 +67,11 @@ router.post('/series', async (req, res) => {
         const scrapeResult = []
         const seriesList = await List.find()
         for await (const item of seriesList) {
+            const isAlreadyExist = await List.count({ 'url': item.url })
+            if (isAlreadyExist) {
+                console.log(`'${item.title}' is already exist in the database`)
+                continue
+            }
             const seriesData = {
                 seriesId: item.id,
                 seriesTitle: item.title,
@@ -118,7 +128,7 @@ router.post('/series/:slug/chapters', async (req, res) => {
     try {
         const theChapters = await Chapters.find({ 'seriesSlug': req.params.slug })
         if (theChapters.length === 0) {
-            return res.status(404).json({ message: 'Chapter data is not available. Please scrape it first' })
+            return res.status(404).json({ message: 'Chapter data is not available' })
         }
         const scrapeResult = []
         for await (const chapter of theChapters) {
@@ -127,7 +137,6 @@ router.post('/series/:slug/chapters', async (req, res) => {
             const elementData = await getContentPageElement.cheerioLoadHtml(html)
 
             chapter.imagesUrl = elementData
-            console.log(chapter)
             const updatedImagesUrl = await chapter.save()
             scrapeResult.push(updatedImagesUrl)
             console.log(`Chapter data of ${chapter.chapterTitle} in the database has been updated:\n${updatedImagesUrl}`)
@@ -139,85 +148,71 @@ router.post('/series/:slug/chapters', async (req, res) => {
     }
 })
 
-/*// Endpoint to patch the chapters data of a specific series
-router.patch('/series/:slug', findSpecificSeries.findTheSeries, async (req, res) => {
-    const seriesSlug = req.params.slug
-
-    List.findOne({
-        'attributes.slug': seriesSlug
-    })
-    .then(async data => {
-        const seriesUrl = data.links.sourceUrl
-        const seriesId = data.id
-        const seriesTitle = data.attributes.title
-
-        const seriesResult = {
-            type: 'series',
-            id: seriesId,
-            attributes: {
-                title: seriesTitle,
-                slug: seriesSlug,
-            },
-            links: {
-                sourceUrl: seriesUrl,
-                chapterUrl: `${req.protocol}://${req.get('host')}/series/${seriesSlug}/chapter`,
-                self: `${req.protocol}://${req.get('host')}/series/${seriesSlug}`
-            }
+// Endpoint to patch the chapters data of a specific series
+router.patch('/series/:slug', async (req, res) => {
+    try {
+        const theSeries = await Series.find({ 'seriesSlug': req.params.slug })
+        if (theSeries.length === 0) {
+            return res.status(404).json({ message: 'Series data is not available' })
         }
+        console.log(`Getting web page element of ${theSeries[0].seriesTitle} from '${theSeries[0].sourceUrl}'`)
+        const html = await getWebPage.getAllPageElements(theSeries[0].sourceUrl)
+        const elementChaptersData = await getChapterPageElement.cheerioLoadHtml(theSeries[0].seriesSlug, html)
+        const scrapeResult = []
+        for await (const chapter of elementChaptersData) {
+            const isAlreadyExist = await Chapters.count({ 'sourceUrl': chapter.sourceUrl })
+            if (isAlreadyExist) {
+                console.log(`'${chapter.chapterTitle}' is already exist in the database`)
+                continue
+            }
+            const chapterData = {
+                chapterPublishedDate: chapter.chapterPublishedDate,
+                chapterTitle: chapter.chapterTitle,
+                chapterSlug: chapter.chapterSlug,
+                selfUrl: `${theSeries[0].selfUrl}/chapter/${chapter.chapterSlug}`,
+                sourceUrl: chapter.chapterUrl,
+                seriesId: theSeries[0].seriesId,
+                seriesTitle: theSeries[0].seriesTitle,
+                seriesSlug: theSeries[0].seriesSlug,
+                seriesUrl: theSeries[0].selfUrl
+            }
 
-        console.log(`Getting web page element of '${seriesTitle}' from '${seriesUrl}'`)
-        const htmlSpecificMangaPage = await getWebPage.getAllPageElements(seriesUrl)
-        const elementData = await getSeriesPageElement.cheerioLoadHtml(htmlSpecificMangaPage)
-
-        seriesResult.attributes.synopsis = elementData.seriesSynopsis
-        seriesResult.attributes.genre = elementData.mangaGenre
-        seriesResult.links.thumbnailUrl = elementData.seriesThumbnailUrl
-
-        const seriesEntry = new Series (seriesResult)
-        seriesEntry.save().then(() => {
-            res.redirect(`../series/${seriesSlug}`)
-        })
-    })
-    .catch(error => {
-        console.log(error)
-        return res.status(500).json({
-            error: 'Something went wrong'
-        })
-    })
+            const chapterEntry = new Chapters(chapterData)
+            const newChapter = await chapterEntry.save()
+            scrapeResult.push(newChapter)
+            console.log(`Chapter data of ${chapter.chapterTitle} has been saved to the database:\n${newChapter}`)
+        }
+        await res.status(201).json(scrapeResult)
+    }
+    catch (err) {
+        res.status(500).json({ message: err.message })
+    }
 })
 
 // Endpoint to patch the images data of a specific chapter
 router.patch('/series/:slug/chapter/:id', async (req, res) => {
-    const seriesSlug = req.params.slug
-    const chapterId = req.params.id
-
-    Chapters.findOne({
-        $and: [
-            {'id': chapterId},
-            {'relationship.seriesSlug':seriesSlug}
-        ]
-    })
-    .then(async data => {
-        const chapterUrl = data.links.sourceUrl
-
-        console.log(`Getting web page element of '${seriesSlug}-chapter-${chapterId}' from '${chapterUrl}'`)
-        const htmlSpecificChapterPage = await getWebPage.getAllPageElements(chapterUrl)
-        const elementData = await getContentPageElement.cheerioLoadHtml(htmlSpecificChapterPage)
-
-        await Chapters.findOneAndUpdate({
+    try {
+        const theChapter = await Chapters.find({
             $and: [
-                {'id': chapterId},
-                {'relationship.seriesSlug':seriesSlug}
+                { 'seriesSlug': req.params.slug },
+                { 'chapterSlug': req.params.id }
             ]
-        }, {$set: {'content': elementData}})
-        await res.redirect(`../series/${seriesSlug}/chapter/${chapterId}`)
-    })
-    .catch(error => {
-        console.log(error)
-        return res.status(500).json({
-            error: 'Something went wrong'
         })
-    })
-})*/
+        if (theChapter.length === 0) {
+            return res.status(404).json({ message: 'Chapter data is not available' })
+        }
+        console.log(`Getting web page element of ${theChapter[0].seriesTitle} from '${theChapter[0].sourceUrl}'`)
+        const html = await getWebPage.getAllPageElements(theChapter[0].sourceUrl)
+        const elementData = await getContentPageElement.cheerioLoadHtml(html)
+
+        theChapter[0].imagesUrl = elementData
+        const updatedImagesUrl = await theChapter[0].save()
+        console.log(`Chapter data of ${theChapter[0].chapterTitle} in the database has been updated:\n${updatedImagesUrl}`)
+        await res.status(201).json(updatedImagesUrl)
+    }
+    catch (err) {
+        res.status(500).json({ message: err.message })
+    }
+})
 
 module.exports = router
