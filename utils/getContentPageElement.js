@@ -4,7 +4,7 @@ module.exports = {
     cheerioLoadHtml: async (html) => {
         const $ = await cheerio.load(html)
         const elementData = []
-        $('img', 'div#readerarea', html).each(function () {
+        await $('img', 'div#readerarea', html).each(function () {
             const url = $(this).attr('src')
             elementData.push(url)
         })

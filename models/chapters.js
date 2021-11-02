@@ -1,68 +1,25 @@
+// Imports required modules
 const mongoose = require('mongoose')
-const moment = require('moment')
 const Schema = mongoose.Schema
 
-// create chapter schema & model
-const ChaptersSchema = new Schema({
-    type: {
-        type: String,
-        required: true,
-        lowercase: true
+// Create Chapters schema and model
+const ChaptersSchema = new Schema(
+    {
+        chapterPublishedDate: String,
+        chapterTitle: String,
+        chapterSlug: String,
+        selfUrl: String,
+        sourceUrl: String,
+        seriesId: String,
+        seriesTitle: String,
+        seriesSlug: String,
+        seriesUrl: String,
+        imagesUrl: [String],
+        compressedImage: [String]
     },
-    id: {
-        type: String
-    },
-    updated: {
-        type: String,
-        default: moment().format('MMMM Do YYYY, h:mm A')
-    },
-    attributes: {
-        title: {
-            type: String,
-            required: true
-        },
-        slug: {
-            type: String,
-            required: true,
-            lowercase: true
-        },
-        datePublished: {
-            type: String
-        }
-    },
-    links: {
-        sourceUrl: {
-            type: String,
-            required: true
-        },
-        seriesUrl: {
-            type: String,
-            required: true
-        },
-        self: {
-            type: String,
-            required: true
-        }
-    },
-    relationships: {
-        seriesTitle: {
-            type: String,
-            required: true
-        },
-        seriesId: {
-            type: String,
-            required: true
-        },
-        seriesSlug: {
-            type: String,
-            required: true
-        }
-    },
-    content: {
-        type: Array
-    }
-})
+    { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
+)
 
+// Exports module
 const Chapters = mongoose.model('Chapters', ChaptersSchema)
-
 module.exports = Chapters
