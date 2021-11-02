@@ -67,7 +67,7 @@ router.post('/series', async (req, res) => {
         const scrapeResult = []
         const seriesList = await List.find()
         for await (const item of seriesList) {
-            const isAlreadyExist = await List.count({ 'url': item.url })
+            const isAlreadyExist = await Series.count({ 'url': item.sourceUrl })
             if (isAlreadyExist) {
                 console.log(`'${item.title}' is already exist in the database`)
                 continue
