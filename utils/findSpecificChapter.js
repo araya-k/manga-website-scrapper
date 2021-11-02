@@ -13,6 +13,9 @@ module.exports = {
             if (theChapter.length === 0) {
                 return res.status(404).json({ message: 'Cannot find the chapter' })
             }
+            if (theChapter[0].imagesUrl.length === 0) {
+                return res.status(404).json({ message: 'Chapter images is still not scraped' })
+            }
         }
         catch (err) {
             return res.status(500).json({ message: err.message })

@@ -67,7 +67,7 @@ router.post('/series', async (req, res) => {
         const scrapeResult = []
         const seriesList = await List.find()
         for await (const item of seriesList) {
-            const isAlreadyExist = await Series.count({ 'url': item.sourceUrl })
+            const isAlreadyExist = await Series.count({ 'sourceUrl': item.url })
             if (isAlreadyExist) {
                 console.log(`'${item.title}' is already exist in the database`)
                 continue
@@ -132,11 +132,13 @@ router.post('/series/:slug/chapters', async (req, res) => {
         }
         const scrapeResult = []
         for await (const chapter of theChapters) {
+            if (chapter.imagesUrl.length !== 0 && !chapter.imagesUrl.includes(null)) {
+                console.log(`Chapter images for ${chapter.chapterTitle} is already scraped`)
+                continue
+            }
             console.log(`Getting web page element of ${chapter.seriesTitle} - ${chapter.chapterTitle} from '${chapter.sourceUrl}'`)
             const html = await getWebPage.getAllPageElements(chapter.sourceUrl)
-            const elementData = await getContentPageElement.cheerioLoadHtml(html)
-
-            chapter.imagesUrl = elementData
+            chapter.imagesUrl = await getContentPageElement.cheerioLoadHtml(html)
             const updatedImagesUrl = await chapter.save()
             scrapeResult.push(updatedImagesUrl)
             console.log(`Chapter data of ${chapter.chapterTitle} in the database has been updated:\n${updatedImagesUrl}`)
@@ -160,7 +162,7 @@ router.patch('/series/:slug', async (req, res) => {
         const elementChaptersData = await getChapterPageElement.cheerioLoadHtml(theSeries[0].seriesSlug, html)
         const scrapeResult = []
         for await (const chapter of elementChaptersData) {
-            const isAlreadyExist = await Chapters.count({ 'sourceUrl': chapter.sourceUrl })
+            const isAlreadyExist = await Chapters.count({ 'sourceUrl': chapter.chapterUrl })
             if (isAlreadyExist) {
                 console.log(`'${chapter.chapterTitle}' is already exist in the database`)
                 continue
@@ -203,9 +205,7 @@ router.patch('/series/:slug/chapter/:id', async (req, res) => {
         }
         console.log(`Getting web page element of ${theChapter[0].seriesTitle} from '${theChapter[0].sourceUrl}'`)
         const html = await getWebPage.getAllPageElements(theChapter[0].sourceUrl)
-        const elementData = await getContentPageElement.cheerioLoadHtml(html)
-
-        theChapter[0].imagesUrl = elementData
+        theChapter[0].imagesUrl = await getContentPageElement.cheerioLoadHtml(html)
         const updatedImagesUrl = await theChapter[0].save()
         console.log(`Chapter data of ${theChapter[0].chapterTitle} in the database has been updated:\n${updatedImagesUrl}`)
         await res.status(201).json(updatedImagesUrl)

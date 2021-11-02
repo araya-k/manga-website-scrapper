@@ -9,7 +9,7 @@ require('dotenv').config()
 
 // Creates app
 const app = express()
-app.use(express.urlencoded({extended: true}))
+app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 app.use('/scrape', scrape)
 app.use('/series', series)
