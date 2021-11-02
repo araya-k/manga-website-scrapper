@@ -70,7 +70,7 @@ router.post('/series', async (req, res) => {
                 genre: undefined,
                 seriesSlug: item.slug,
                 selfUrl: item.series,
-                chaptersUrl: `${item.series}/chapter`,
+                chaptersUrl: `${item.series}/chapters`,
                 sourceUrl: item.url
             }
 

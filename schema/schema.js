@@ -1,64 +1,38 @@
 const schema = require('graphql')
-const { GraphQLObjectType, GraphQLString, GraphQLInt, GraphQLID, GraphQLList, GraphQLSchema, GraphQLNonNull } = schema
+const { GraphQLObjectType, GraphQLString, GraphQLInt, GraphQLList, GraphQLSchema } = schema
 const Series = require('../models/series')
-
-const ListAttributesType = new GraphQLObjectType({
-    name: 'ListAttributes',
-    fields: () => ({
-        title: { type: GraphQLString },
-        slug: { type: GraphQLString }
-    })
-})
+const Chapters = require("../models/chapters");
 
 const SeriesType = new GraphQLObjectType({
     name: 'Series',
-    description: 'Serial/comics which are published at Asura Scans website',
+    description: 'Series/comic which are published at Asura Scans website',
     fields: () => ({
-        type: { type: GraphQLString },
-        id: { type: GraphQLInt },
-        title: { type: GraphQLString },
-        updated: { type: GraphQLString },
-        slug: { type: GraphQLString },
-        source: { type: GraphQLString },
-        chapters: {
-            type: new GraphQLList(ChaptersType),
-
-        }
+        seriesId: { type: GraphQLInt },
+        seriesTitle: { type: GraphQLString },
+        seriesSlug: { type: GraphQLString },
+        coverImage: { type: GraphQLString },
+        synopsis: { type: GraphQLString },
+        selfUrl: { type: GraphQLString },
+        chaptersUrl: { type: GraphQLString },
+        sourceUrl: { type: GraphQLString }
     })
 })
 
-const ChaptersType = new GraphQLObjectType({
-    name: 'Chapters',
-    description: 'Collection of chapter for each serial/comic',
+const ChapterType = new GraphQLObjectType({
+    name: 'Chapter',
+    description: 'Chapter for each series/comic',
     fields: () => ({
-        type: { type: GraphQLString },
-        id: { type: GraphQLInt },
-        title: { type: GraphQLString },
-        updated: { type: GraphQLString },
-        slug: { type: GraphQLString },
-        source: { type: GraphQLString },
-        content: {
-            type: new GraphQLList(ImagesType),
-        }
+        chapterPublishedDate: { type: GraphQLString },
+        chapterTitle: { type: GraphQLString },
+        chapterSlug: { type: GraphQLString },
+        selfUrl: { type: GraphQLString },
+        sourceUrl: { type: GraphQLString },
+        seriesId: { type: GraphQLString },
+        seriesTitle: { type: GraphQLString },
+        seriesSlug: { type: GraphQLString },
+        seriesUrl: { type: GraphQLString }
     })
 })
-
-const ImagesType = new GraphQLObjectType({
-    name: 'Images',
-    description: 'Collection of image url for each chapter',
-    fields: () => ({
-        type: { type: GraphQLString },
-        id: { type: GraphQLInt },
-        title: { type: GraphQLString },
-        updated: { type: GraphQLString },
-        slug: { type: GraphQLString },
-        source: { type: GraphQLString },
-        content: {
-            type: new GraphQLList(ImagesType),
-        }
-    })
-})
-
 
 const RootQueryType = new GraphQLObjectType({
     name: 'Query',
@@ -68,7 +42,7 @@ const RootQueryType = new GraphQLObjectType({
             type: new GraphQLList(SeriesType),
             description: 'List of all series/comics which already scraped from Asura Scans website',
             resolve: () => {
-                Series.find()
+                Series.find({}, { '_id': 0, '__v': 0 }).sort({ id: 1 })
             }
         }
     })
