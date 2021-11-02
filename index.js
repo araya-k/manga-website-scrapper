@@ -2,8 +2,8 @@
 const express = require('express')
 const scrape = require('./routes/scrape')
 const series = require('./routes/series')
-// const { graphqlHTTP } = require('express-graphql')
-// const schema = require('./schema/schema')
+const { graphqlHTTP } = require('express-graphql')
+const schema = require('./schema/schema')
 const mongoose = require('mongoose')
 require('dotenv').config()
 
@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 app.use('/scrape', scrape)
 app.use('/series', series)
-// app.use('/graphql', graphqlHTTP({schema: schema, graphiql: true}))
+app.use('/graphql', graphqlHTTP({schema: schema, graphiql: true}))
 
 // Initializes application port and database information
 const PORT = process.env.PORT
