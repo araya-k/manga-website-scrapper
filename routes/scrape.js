@@ -151,7 +151,7 @@ router.post('/series/:slug/chapters', async (req, res) => {
 })
 
 // Endpoint to patch the chapters data of a specific series
-router.patch('/series/:slug', async (req, res) => {
+router.patch('/series/:slug/chapters', async (req, res) => {
     try {
         const theSeries = await Series.find({ 'seriesSlug': req.params.slug })
         if (theSeries.length === 0) {

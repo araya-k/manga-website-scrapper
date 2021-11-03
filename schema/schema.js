@@ -1,5 +1,5 @@
 const schema = require('graphql')
-const { GraphQLObjectType, GraphQLString, GraphQLInt, GraphQLList, GraphQLSchema } = schema
+const { GraphQLObjectType, GraphQLString, GraphQLInt, GraphQLNonNull, GraphQLList, GraphQLSchema } = schema
 const Series = require('../models/series')
 const Chapters = require('../models/chapters');
 
@@ -39,7 +39,7 @@ const ChapterType = new GraphQLObjectType({
 
 const ContentType = new GraphQLObjectType({
     name: 'Content',
-    description: 'An URL of an image object from a specific chapter',
+    description: 'A collection URLs of image content from a specific chapter',
     fields: () => ({
         imagesUrl: { type: new GraphQLList(GraphQLString) },
         compressedImage: { type: new GraphQLList(GraphQLString) }
@@ -65,7 +65,7 @@ const RootQueryType = new GraphQLObjectType({
             },
             resolve: (root, { seriesSlug }) => {
                 if (seriesSlug !== undefined) {
-                    return Series.find({'seriesSlug': seriesSlug })
+                    return Series.find({ 'seriesSlug': seriesSlug })
                 } else { return Series.find() }
             }
         },
@@ -73,7 +73,7 @@ const RootQueryType = new GraphQLObjectType({
             type: new GraphQLList(ChapterType),
             description: 'Get a list of all chapters from a specific series',
             args: {
-                seriesSlug: { type: GraphQLString }
+                seriesSlug: { type: new GraphQLNonNull(GraphQLString) }
             },
             resolve: (root, { seriesSlug }) => {
                 return Chapters.find({ 'seriesSlug': seriesSlug })
@@ -81,10 +81,10 @@ const RootQueryType = new GraphQLObjectType({
         },
         chapterContent: {
             type: new GraphQLList(ContentType),
-            description: 'Get the content of a scpecific chapter',
+            description: 'Get the content of a specific chapter',
             args: {
-                chapterSlug: { type: GraphQLString },
-                seriesSlug: { type: GraphQLString }
+                chapterSlug: { type: new GraphQLNonNull(GraphQLString) },
+                seriesSlug: { type: new GraphQLNonNull(GraphQLString) }
             },
             resolve: (root, { chapterSlug, seriesSlug }) => {
                 return Chapters.find({
@@ -92,7 +92,7 @@ const RootQueryType = new GraphQLObjectType({
                         { 'chapterSlug': chapterSlug },
                         { 'seriesSlug': seriesSlug }
                     ]
-                }, { 'imagesUrl': 1 })
+                }, { 'imagesUrl': 1, 'compressedImage': 1 })
             }
         }
     })
