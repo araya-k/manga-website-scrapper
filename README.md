@@ -4,7 +4,7 @@ An API to get URL to all manga series and every chapters’ images from Asura Sc
 This project is published on these links below:
 - version1: https://manga-website-scrapper.herokuapp.com/
 - version2: https://manga-website-scrapper-v2.herokuapp.com/
-- version3: https://api.manga.suputranike.site/ and https://manga-website-scrapper-m5ytdvjloq-et.a.run.app
+- version3: https://api.manga.suputranike.site/ and https://manga-scrapper-v3.et.r.appspot.com/
 
 <table>
   <caption><h3>Endpoints v3</h3></caption>
