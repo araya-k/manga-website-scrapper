@@ -30,7 +30,7 @@ This project is published on these links below:
   </tr>
   <tr>
     <td>Scrape new chapter data for a specific series</td>
-    <td>/series/{slug}/chapters<br>e.g., /series/solo-leveling/chapters</td>
+    <td>/scrape/series/{slug}/chapters<br>e.g., /series/solo-leveling/chapters</td>
     <td>PATCH</td>
   </tr>
   <tr>
@@ -40,7 +40,7 @@ This project is published on these links below:
   </tr>
   <tr>
     <td>Scrape new image content for a specific chapter</td>
-    <td>/series/{slug}/chapter/{id}<br>e.g., /series/solo-leveling/chapter/170</td>
+    <td>/scrape/series/{slug}/chapter/{id}<br>e.g., /series/solo-leveling/chapter/170</td>
     <td>PATCH</td>
   </tr>
 </table>
